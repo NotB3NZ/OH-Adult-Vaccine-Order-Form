@@ -12,6 +12,10 @@ export const metadata = {
   description:
     "Order adult vaccines quickly and easily. Choose from 13 available vaccines, manage deliveries, and submit your order in one simple form.",
   keywords: "vaccines, adult vaccines, order form, clinic, healthcare",
+  icons: {
+    // ⬇️ PASTE YOUR LOGO URL HERE for the Favicon ⬇️
+    icon: "https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg",
+  },
 };
 
 export default function RootLayout({ children }) {

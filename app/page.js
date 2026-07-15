@@ -535,17 +535,25 @@ export default function OrderFormPage() {
               </p>
             </div>
           </div>
-          {totalItemCount > 0 && (
-            <div className="flex items-center gap-2 bg-primary-light text-primary-dark px-4 py-2 rounded-full font-medium text-sm animate-fade-in">
-              <ShoppingCart size={18} />
-              <span>
-                {totalItemCount} {totalItemCount === 1 ? "item" : "items"}
-              </span>
-              <span className="hidden sm:inline">
-                · {formatPrice(grandTotal)}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {totalItemCount > 0 && (
+              <div className="flex items-center gap-2 bg-primary-light text-primary-dark px-4 py-2 rounded-full font-medium text-sm animate-fade-in">
+                <ShoppingCart size={18} />
+                <span>
+                  {totalItemCount} {totalItemCount === 1 ? "item" : "items"}
+                </span>
+                <span className="hidden sm:inline">
+                  · {formatPrice(grandTotal)}
+                </span>
+              </div>
+            )}
+            {/* ⬇️ PASTE YOUR LOGO URL HERE in the src attribute ⬇️ */}
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg" 
+              alt="Coca Cola Logo" 
+              className="h-8 object-contain"
+            />
+          </div>
         </div>
       </header>
 

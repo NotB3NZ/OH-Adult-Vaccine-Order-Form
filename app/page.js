@@ -19,6 +19,8 @@ import {
   Package,
   User,
   Users,
+  Dog,
+  Lock,
 } from "lucide-react";
 
 /* ================================================================
@@ -149,15 +151,16 @@ function prepareExcelPayload({
 /* ================================================================
    COMPONENT: VaccineCard
    ================================================================ */
-function VaccineCard({ vaccine, item, defaultSite, onQtyChange, onSiteChange }) {
+function VaccineCard({ vaccine, item, defaultSite, onQtyChange, onSiteChange, isPetOwner }) {
   const isActive = item.qty > 0;
   const isMaxed = item.qty >= vaccine.maxQty;
   const isRabies = vaccine.maxQty === 1;
+  const isLocked = isRabies && !isPetOwner;
 
   return (
     <div
       className={`vaccine-card rounded-2xl border-2 p-5 bg-card-bg ${isActive ? "active border-primary/40" : "border-card-border"
-        }`}
+        } ${isLocked ? "opacity-60 grayscale-[0.5]" : ""}`}
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
       {/* Header */}
@@ -180,10 +183,16 @@ function VaccineCard({ vaccine, item, defaultSite, onQtyChange, onSiteChange }) 
       </div>
 
       {/* Max dose notice for Rabies */}
-      {isRabies && (
+      {isRabies && !isLocked && (
         <div className="flex items-center gap-1.5 mb-3 text-xs text-warning bg-warning-light rounded-lg px-3 py-1.5">
           <AlertCircle size={14} />
           <span>Maximum 1 dose</span>
+        </div>
+      )}
+      {isLocked && (
+        <div className="flex items-center gap-1.5 mb-3 text-xs text-muted bg-muted-bg rounded-lg px-3 py-1.5">
+          <Lock size={14} />
+          <span>Locked (Only Available for Pet Owners)</span>
         </div>
       )}
 
@@ -194,7 +203,7 @@ function VaccineCard({ vaccine, item, defaultSite, onQtyChange, onSiteChange }) 
           <button
             type="button"
             onClick={() => onQtyChange(Math.max(0, item.qty - 1))}
-            disabled={item.qty === 0}
+            disabled={item.qty === 0 || isLocked}
             className="qty-btn w-9 h-9 flex items-center justify-center rounded-lg bg-card-bg border border-card-border text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-danger-light hover:border-danger hover:text-danger"
             aria-label={`Decrease ${vaccine.name} quantity`}
           >
@@ -209,7 +218,7 @@ function VaccineCard({ vaccine, item, defaultSite, onQtyChange, onSiteChange }) 
           <button
             type="button"
             onClick={() => onQtyChange(Math.min(vaccine.maxQty, item.qty + 1))}
-            disabled={isMaxed}
+            disabled={isMaxed || isLocked}
             className="qty-btn w-9 h-9 flex items-center justify-center rounded-lg bg-card-bg border border-card-border text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary-light hover:border-primary hover:text-primary"
             aria-label={`Increase ${vaccine.name} quantity`}
           >
@@ -260,7 +269,7 @@ function VaccineCard({ vaccine, item, defaultSite, onQtyChange, onSiteChange }) 
 /* ================================================================
    COMPONENT: BasketGrid
    ================================================================ */
-function BasketGrid({ basket, defaultSite, onUpdate }) {
+function BasketGrid({ basket, defaultSite, onUpdate, isPetOwner }) {
   const handleQtyChange = useCallback(
     (vaccineId, qty) => {
       onUpdate((prev) => ({
@@ -289,6 +298,7 @@ function BasketGrid({ basket, defaultSite, onUpdate }) {
           vaccine={vaccine}
           item={basket[vaccine.id]}
           defaultSite={defaultSite}
+          isPetOwner={isPetOwner}
           onQtyChange={(qty) => handleQtyChange(vaccine.id, qty)}
           onSiteChange={(site) => handleSiteChange(vaccine.id, site)}
         />
@@ -403,7 +413,29 @@ export default function OrderFormPage() {
   const [associateNumber, setAssociateNumber] = useState("");
   const [defaultSite, setDefaultSite] = useState("");
   const [wantDependent, setWantDependent] = useState(false);
+  const [isPetOwner, setIsPetOwner] = useState(false);
   const [activeTab, setActiveTab] = useState("associate");
+
+  const handlePetOwnerToggle = useCallback((checked) => {
+    setIsPetOwner(checked);
+    // If unchecked, set Rabies quantities back to 0
+    if (!checked) {
+      setAssociateBasket((prev) => {
+        const next = { ...prev };
+        VACCINES.forEach((v) => {
+          if (v.maxQty === 1) next[v.id].qty = 0;
+        });
+        return next;
+      });
+      setDependentBasket((prev) => {
+        const next = { ...prev };
+        VACCINES.forEach((v) => {
+          if (v.maxQty === 1) next[v.id].qty = 0;
+        });
+        return next;
+      });
+    }
+  }, []);
 
   // -- Baskets --
   const [associateBasket, setAssociateBasket] = useState(createEmptyBasket);
@@ -589,9 +621,11 @@ export default function OrderFormPage() {
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     id="associate-number"
                     value={associateNumber}
-                    onChange={(e) => setAssociateNumber(e.target.value)}
+                    onChange={(e) => setAssociateNumber(e.target.value.replace(/\D/g, ""))}
                     placeholder="e.g. 12345"
                     className="w-full rounded-xl border-2 border-card-border bg-card-bg px-4 py-3 text-base text-foreground placeholder:text-muted"
                   />
@@ -627,8 +661,28 @@ export default function OrderFormPage() {
                 </div>
               </div>
 
-              {/* Dependent Toggle */}
+              {/* Pet Owner Toggle */}
               <div className="mt-6 pt-5 border-t border-divider">
+                <label className="flex items-center gap-3 cursor-pointer group select-none">
+                  <input
+                    type="checkbox"
+                    checked={isPetOwner}
+                    onChange={(e) => handlePetOwnerToggle(e.target.checked)}
+                    className="shrink-0"
+                    id="pet-owner-toggle"
+                  />
+                  <Dog
+                    size={20}
+                    className={`transition-colors ${isPetOwner ? "text-accent" : "text-muted"}`}
+                  />
+                  <span className="text-base font-medium text-foreground group-hover:text-accent transition-colors">
+                    I am a pet owner
+                  </span>
+                </label>
+              </div>
+
+              {/* Dependent Toggle */}
+              <div className="mt-4 pt-4 border-t border-divider">
                 <label className="flex items-center gap-3 cursor-pointer group select-none">
                   <input
                     type="checkbox"
@@ -721,6 +775,7 @@ export default function OrderFormPage() {
                   <BasketGrid
                     basket={associateBasket}
                     defaultSite={defaultSite}
+                    isPetOwner={isPetOwner}
                     onUpdate={setAssociateBasket}
                   />
                 </div>
@@ -744,6 +799,7 @@ export default function OrderFormPage() {
                   <BasketGrid
                     basket={dependentBasket}
                     defaultSite={defaultSite}
+                    isPetOwner={isPetOwner}
                     onUpdate={setDependentBasket}
                   />
                 </div>
@@ -869,7 +925,7 @@ export default function OrderFormPage() {
             </div>
           </div>
         </div>
-      </div>
-    </main>
+      </div >
+    </main >
   );
 }
